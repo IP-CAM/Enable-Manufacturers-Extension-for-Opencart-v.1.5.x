@@ -1,0 +1,190 @@
+<modification>
+	<id>Enable/Disable Manufacturers</id>
+	<version>1.0.2</version>
+	<vqmver>2.1.7</vqmver>
+	<author>garudacrafts</author>
+	
+	<file name="admin/controller/catalog/manufacturer.php">
+		<operation>
+			<search position="before"><![CDATA[
+			$this->data['column_action']
+			]]></search>
+			<add><![CDATA[
+			$this->data['column_status'] = $this->language->get('column_status');
+			]]></add>
+		</operation>
+		<operation>
+			<search position="before"><![CDATA[
+			$result['sort_order']
+			]]></search>
+			<add><![CDATA[
+			'status'  => ($result['status'] ? $this->language->get('text_enabled') : $this->language->get('text_disabled')),
+			]]></add>
+		</operation>
+		<operation>
+			<search position="before"><![CDATA[
+			$this->data['button_insert']
+			]]></search>
+			<add><![CDATA[
+			$this->data['text_enabled'] = $this->language->get('text_enabled');
+			$this->data['button_enable'] = $this->language->get('button_enable');
+			$this->data['button_disable'] = $this->language->get('button_disable');
+			]]></add>
+		</operation>
+		<operation>
+			<search position="before"><![CDATA[
+			$this->data['insert']
+			]]></search>
+			<add><![CDATA[
+			$this->data['enable'] = $this->url->link('catalog/manufacturer/enable', 'token=' . $this->session->data['token'], 'SSL');
+			$this->data['disable'] = $this->url->link('catalog/manufacturer/disable', 'token=' . $this->session->data['token'], 'SSL');
+			]]></add>
+		</operation>
+		<operation>
+			<search position="before"><![CDATA[
+			function getList()
+			]]></search>
+			<add><![CDATA[
+			public function enable() {
+				  $this->load->language('catalog/manufacturer');
+				  
+				  $this->document->setTitle($this->language->get('heading_title'));
+				  
+				  $this->load->model('catalog/manufacturer');
+				  
+				  if (!$this->user->hasPermission('modify', 'catalog/manufacturer')) {
+					  $this->error['warning'] = $this->language->get('error_permission');
+				  } elseif (isset($this->request->post['selected'])) {
+					  $enabled_count = 0;
+					  
+					  foreach ($this->request->post['selected'] as $manufacturer_id) {
+						  $manufacturer_info = $this->model_catalog_manufacturer->getManufacturer($manufacturer_id);
+						  
+						  if ($manufacturer_info && !$manufacturer_info['status']) {
+							  $this->model_catalog_manufacturer->enableManufacturer($manufacturer_id);
+							  
+							  $enabled_count++;
+						  }
+					  } 
+					  
+					  $this->session->data['success'] = sprintf($this->language->get('text_manufacturer_enabled'), $enabled_count);
+									
+					  $this->redirect($this->url->link('catalog/manufacturer', 'token=' . $this->session->data['token'], 'SSL'));			
+				  }
+				  
+				  $this->getList();
+			  }
+
+			public function disable() {
+				  $this->load->language('catalog/manufacturer');
+				  
+				  $this->document->setTitle($this->language->get('heading_title'));
+				  
+				  $this->load->model('catalog/manufacturer');
+				  
+				  if (!$this->user->hasPermission('modify', 'catalog/manufacturer')) {
+					  $this->error['warning'] = $this->language->get('error_permission');
+				  } elseif (isset($this->request->post['selected'])) {
+					  $disabled_count = 0;
+					  
+					  foreach ($this->request->post['selected'] as $manufacturer_id) {
+						  $manufacturer_info = $this->model_catalog_manufacturer->getManufacturer($manufacturer_id);
+						  
+						  if ($manufacturer_info && $manufacturer_info['status']) {
+							  $this->model_catalog_manufacturer->disableManufacturer($manufacturer_id);
+							  
+							  $disabled_count++;
+						  }
+					  } 
+					  
+					  $this->session->data['success'] = sprintf($this->language->get('text_manufacturer_disabled'), $disabled_count);
+									
+					  $this->redirect($this->url->link('catalog/manufacturer', 'token=' . $this->session->data['token'], 'SSL'));			
+				  }
+				  
+				  $this->getList();
+			  }
+			]]></add>
+		</operation>
+	</file>
+	
+	<file name="admin/language/english/catalog/manufacturer.php">
+		<operation>
+			<search position="before"><![CDATA[
+			$_['text_success']
+			]]></search>
+			<add><![CDATA[
+			$_['column_status']           	= 'Status';
+			$_['text_manufacturer_enabled']       = 'You have enabled %s manufacturers!';
+			$_['text_manufacturer_disabled']       = 'You have disabled %s manufacturers!';
+			$_['button_enable']			= 'Enable';
+			$_['button_disable']			= 'Disable';
+			]]></add>
+		</operation>
+	</file>
+	
+	<file name="admin/model/catalog/manufacturer.php">
+		<operation>
+			<search position="before"><![CDATA[
+			function addManufacturer
+			]]></search>
+			<add><![CDATA[
+			public function enableManufacturer($manufacturer_id) {
+				$manufacturer_info = $this->getManufacturer($manufacturer_id);
+		
+				if ($manufacturer_id) {
+					$this->db->query("UPDATE " . DB_PREFIX . "manufacturer SET status = '1' WHERE manufacturer_id = '" . (int)$manufacturer_id . "'");
+				}
+
+				$this->cache->delete('manufacturer');
+			}
+
+			public function disableManufacturer($manufacturer_id) {
+				$manufacturer_info = $this->getManufacturer($manufacturer_id);
+		
+				if ($manufacturer_id) {
+					$this->db->query("UPDATE " . DB_PREFIX . "manufacturer SET status = '0' WHERE manufacturer_id = '" . (int)$manufacturer_id . "'");
+				}
+
+				$this->cache->delete('manufacturer');
+			}
+			]]></add>
+		</operation>
+	</file>
+	
+	<file name="admin/view/template/catalog/manufacturer_list.tpl">
+		<operation>
+			<search position="replace"><![CDATA[
+			<div class="buttons">
+			]]></search>
+			<add><![CDATA[
+			<div class="buttons"><a onclick="$('form').attr('action', '<?php echo $enable; ?>'); $('form').submit();" class="button button_enable"><?php echo $button_enable; ?></a> <a onclick="$('form').attr('action', '<?php echo $disable; ?>'); $('form').submit();" class="button button_disable"><?php echo $button_disable; ?></a>
+			]]></add>
+		</operation>
+		<operation>
+			<search position="before"><![CDATA[
+			<?php echo $column_action; ?>
+			]]></search>
+			<add><![CDATA[
+			<td class="left"><?php echo $column_status; ?></td>
+			]]></add>
+		</operation>
+		<operation>
+			<search position="before"><![CDATA[
+			$manufacturer['action']
+			]]></search>
+			<add><![CDATA[
+			<td class="left" style="color:#FFF;font-weight:bold;background:<?php echo ($manufacturer['status'] == $text_enabled ? '#8EC74B' : '#DC313E'); ?>;"><?php echo $manufacturer['status']; ?></td>
+			]]></add>
+		</operation>
+		<operation>
+			<search position="replace"><![CDATA[
+			colspan="6"
+			]]></search>
+			<add><![CDATA[
+			colspan="7"
+			]]></add>
+		</operation>
+	</file>
+	
+</modification>
